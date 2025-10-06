@@ -1,19 +1,27 @@
-cat > requirements.txt <<'EOF'
-fastapi==0.112.2
-uvicorn[standard]==0.30.6
-EOF
+# main.py
+# AnalystPro FastAPI backend for Railway
+# ---------------------------------------
+# Provides a simple API with CORS configured
+# for your GitHub Pages frontend and Teams app.
 
-cat > main.py <<'EOF'
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+app = FastAPI(
+    title="AnalystPro API",
+    description="Backend service for AnalystPro (Teams + GitHub Pages integration)",
+    version="1.0.0"
+)
 
+# ✅ Allowed origins (no path segments!)
+# Use only scheme + host
 allowed_origins = [
-    "https://gksn-hub.github.io",
-    "https://gksn-hub.github.io/AnalystPRO"
+    "https://gksn-hub.github.io",   # GitHub Pages frontend
+    "http://localhost:5173",        # optional for local dev
+    "http://localhost:3000"         # optional for local dev
 ]
 
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -22,20 +30,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Health endpoint for Railway monitoring ---
 @app.get("/health")
 def health():
+    """Used by Railway to check that the service is alive."""
     return {"ok": True}
 
+# --- Demo API endpoint ---
 @app.get("/api/hello")
 def hello():
+    """Simple test route for validation."""
     return {"message": "Hello from AnalystPro FastAPI"}
-EOF
 
-# Tell Railway how to start
-cat > Procfile <<'EOF'
-web: uvicorn main:app --host 0.0.0.0 --port ${PORT}
-EOF
+# --- Example: extend this with your app logic ---
+# You can add more endpoints later, e.g.:
+# @app.post("/api/score")
+# def score_idea(idea: dict):
+#     # Call your LLM scoring logic here
+#     return {"score": 87, "reason": "High impact and low effort"}
 
-git add .
-git commit -m "Add FastAPI service for Railway"
-git push origin main
+# Run with: uvicorn main:app --host 0.0.0.0 --port ${PORT}
+# (Railway reads the PORT env variable automatically)
