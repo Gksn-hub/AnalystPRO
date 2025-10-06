@@ -1,11 +1,3 @@
-# Get your repo locally
-git clone https://github.com/Gksn-hub/AnalystPRO.git
-cd AnalystPRO
-
-# Remove the ZIP placeholders (Railway can't build them)
-git rm -f analystpro_github.zip analystpro_site.zip || true
-
-# Add FastAPI files
 cat > requirements.txt <<'EOF'
 fastapi==0.112.2
 uvicorn[standard]==0.30.6
@@ -18,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
 allowed_origins = [
-    "https://gksn-hub.github.io",               # tighten as needed
+    "https://gksn-hub.github.io",
     "https://gksn-hub.github.io/AnalystPRO"
 ]
 
@@ -39,7 +31,7 @@ def hello():
     return {"message": "Hello from AnalystPro FastAPI"}
 EOF
 
-# Procfile tells Railway how to start
+# Tell Railway how to start
 cat > Procfile <<'EOF'
 web: uvicorn main:app --host 0.0.0.0 --port ${PORT}
 EOF
