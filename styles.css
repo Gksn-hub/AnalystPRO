@@ -1,0 +1,31 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  background: #f8fafc;
+  color: #0a2540;
+}
+.container { width: min(90%, 900px); margin: 0 auto; }
+.nav, .footer {
+  background: #0a2540;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+}
+.hero {
+  background: white;
+  padding: 3rem 1rem;
+  border-radius: 16px;
+  box-shadow: 0 6px 28px rgba(2, 8, 20, .06);
+  margin-top: 2rem;
+}
+button {
+  background: #0a2540;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+button:hover { opacity: 0.85; }
+a { color: #2eb67d; text-decoration: none; }
