@@ -20,12 +20,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      # If you later add a Vite/React build, add npm build here.
+
+      # If you later add a Vite/React build, insert npm/yarn build above
+      # and change OUT to your build folder (e.g., dist).
+
       - name: Prepare static site
+        shell: bash
         run: |
+          set -euo pipefail
           OUT=dist
+          rm -rf "$OUT"
           mkdir -p "$OUT"
-          cp -a index.html styles.css app.js privacy.html terms.html meeting-config.html assets "$OUT"/
+          # Copy required files explicitly (safe for minimal site)
+          cp -a index.html styles.css app.js privacy.html terms.html meeting-config.html "$OUT"/ 2>/dev/null || true
+          # Copy assets folder (includes Teams SDK)
+          if [ -d assets ]; then
+            cp -a assets "$OUT"/
+          fi
+
+      - name: Debug: list dist contents
+        run: |
+          echo "===== dist tree ====="
+          ls -R dist || true
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
