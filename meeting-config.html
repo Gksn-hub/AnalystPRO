@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AnalystPro — Meeting Setup</title>
+  <style>body{font-family:system-ui,sans-serif;padding:20px}.card{max-width:640px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;padding:20px}h1{margin:0 0 12px}.muted{color:#6b7280}</style>
+  <script src="https://res.cdn.office.net/teams-js/v2.21.0/js/MicrosoftTeams.min.js"></script>
+</head>
+<body>
+  <div class="card">
+    <h1>AnalystPro</h1>
+    <p class="muted">Click <b>Save</b> to add AnalystPro to this meeting. You can open it from the side panel during the call.</p>
+  </div>
+  <script>
+    (async () => {
+      try {
+        await microsoftTeams.app.initialize();
+        // Enable Save button
+        microsoftTeams.pages.config.setValidityState(true);
+
+        // Handle Save: set the tab configuration
+        microsoftTeams.pages.config.registerOnSaveHandler(async (saveEvent) => {
+          try {
+            await microsoftTeams.pages.config.setConfig({
+              entityId: "analystProMeeting",
+              contentUrl: "https://gksn-hub.github.io/AnalystPRO/index.html",
+              websiteUrl: "https://gksn-hub.github.io/AnalystPRO",
+              suggestedDisplayName: "AnalystPro"
+            });
+            saveEvent.notifySuccess();
+          } catch (e) {
+            console.error("setConfig failed", e);
+            saveEvent.notifyFailure(e?.message || "setConfig failed");
+          }
+        });
+      } catch (e) {
+        console.error("Teams init error", e);
+      }
+    })();
+  </script>
+</body>
+</html>
