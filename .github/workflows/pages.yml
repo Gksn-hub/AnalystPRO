@@ -25,7 +25,7 @@ jobs:
         run: |
           OUT=dist
           mkdir -p "$OUT"
-          cp -r index.html styles.css app.js privacy.html terms.html assets "$OUT"/ 2>/dev/null || true
+          cp -a index.html styles.css app.js privacy.html terms.html meeting-config.html assets "$OUT"/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
