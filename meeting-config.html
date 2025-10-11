@@ -10,50 +10,78 @@
     h1{margin:0 0 12px}.muted{color:#6b7280}
     .log{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#374151;margin-top:8px;white-space:pre-wrap}
   </style>
+</head>
+<body>
+  <div class="card">
+    <h1>AnalystPro</h1>
+    <p class="muted">Click <b>Save</b> to add AnalystPro to this meeting. You can open it from the side panel during the call.</p>
+    <div id="log" class="log"></div>
+  </div>
 
-  <!-- Teams JS v2 (defer so it doesn’t block) -->
-  <script defer src="https://res.cdn.office.net/teams-js/v2.21.0/js/MicrosoftTeams.min.js"></script>
-
-  <!-- Fallback loader for v1 if v2 isn't available soon -->
   <script>
-    // If v2 script fails entirely, try v1
-    window.addEventListener('error', function(){
-      if (!window.microsoftTeams) {
-        var s=document.createElement('script');
-        s.src="https://res.cdn.office.net/teams-js/1.12.0/js/MicrosoftTeams.min.js";
-        s.defer=true;
-        document.head.appendChild(s);
-      }
-    }, { once:true });
+    const log = m => { const el=document.getElementById('log'); el.textContent += (el.textContent?'\n':'') + m; console.log(m); };
 
-    // Small helper logger
-    function log(msg){
-      var el = document.getElementById('log');
-      if (el) { el.textContent += (el.textContent ? '\n' : '') + msg; }
-      console.log(msg);
+    function loadScript(src, timeoutMs=6000){
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        let done = false;
+        const t = setTimeout(() => { if(!done){ done=true; s.remove(); reject(new Error('timeout')); }}, timeoutMs);
+        s.onload = () => { if(!done){ done=true; clearTimeout(t); resolve(); } };
+        s.onerror = (e) => { if(!done){ done=true; clearTimeout(t); reject(e); } };
+        s.src = src;
+        s.defer = true;
+        document.head.appendChild(s);
+      });
     }
 
-    // Wait/poll for microsoftTeams to exist (handles slow loads)
-    async function waitForTeamsSDK(timeoutMs=8000){
+    async function ensureTeamsSDK(){
+      // Already present?
+      if (window.microsoftTeams) return 'present';
+      // Try LOCAL v2 → LOCAL v1 → CDN v2 → CDN v1
+      const tries = [
+        '/AnalystPRO/assets/teams/v2/MicrosoftTeams.min.js',
+        '/AnalystPRO/assets/teams/v1/MicrosoftTeams.min.js',
+        'https://res.cdn.office.net/teams-js/v2.21.0/js/MicrosoftTeams.min.js',
+        'https://res.cdn.office.net/teams-js/1.12.0/js/MicrosoftTeams.min.js',
+      ];
+      for (const src of tries){
+        try {
+          log('Loading Teams SDK: ' + src);
+          await loadScript(src, 6000);
+          if (window.microsoftTeams) return src;
+        } catch(e){
+          log('Failed: ' + src + ' (' + (e?.message || e) + ')');
+        }
+      }
+      return null;
+    }
+
+    async function waitForGlobal(timeoutMs=4000){
       const start = Date.now();
-      while (Date.now() - start < timeoutMs) {
+      while (Date.now() - start < timeoutMs){
         if (window.microsoftTeams && (microsoftTeams.app || microsoftTeams.initialize)) return true;
-        await new Promise(r=>setTimeout(r,150));
+        await new Promise(r => setTimeout(r,150));
       }
       return false;
     }
 
     async function init(){
-      log('Waiting for Teams SDK…');
-      const ok = await waitForTeamsSDK();
+      log('Waiting / loading Teams SDK…');
+      const src = await ensureTeamsSDK();
+      if (!src){
+        log('Could not load Teams SDK from local or CDN. Please check that assets/teams/* exists or allow res.cdn.office.net.');
+        return;
+      }
+      log('Teams SDK loaded from: ' + src);
+
+      const ok = await waitForGlobal();
       if (!ok){
-        log('Could not load Teams SDK. Please try again.');
+        log('SDK global did not initialize.');
         return;
       }
 
       try {
-        // v2 init if available, else v1
-        if (microsoftTeams.app && microsoftTeams.app.initialize){
+        if (microsoftTeams.app?.initialize){     // v2 path
           await microsoftTeams.app.initialize();
           log('Initialized (v2).');
           microsoftTeams.pages.config.setValidityState(true);
@@ -73,39 +101,31 @@
               saveEvent.notifyFailure(e?.message || 'setConfig failed');
             }
           });
-        } else if (microsoftTeams.initialize){ // v1 API shape
+        } else if (microsoftTeams.initialize){   // v1 path
           microsoftTeams.initialize();
           log('Initialized (v1).');
-          if (microsoftTeams.settings && microsoftTeams.settings.setValidityState){
-            microsoftTeams.settings.setValidityState(true);
-          }
-          // v1 uses settings.registerOnSaveHandler & setSettings
-          if (microsoftTeams.settings && microsoftTeams.settings.registerOnSaveHandler){
-            microsoftTeams.settings.registerOnSaveHandler(function(saveEvent){
-              try {
-                microsoftTeams.settings.setSettings({
-                  entityId: "analystProMeeting",
-                  contentUrl: "https://gksn-hub.github.io/AnalystPRO/index.html",
-                  websiteUrl: "https://gksn-hub.github.io/AnalystPRO",
-                  suggestedDisplayName: "AnalystPro"
-                });
-                log('Config set (v1).');
-                saveEvent.notifySuccess();
-              } catch(e){
-                log('setSettings failed (v1): ' + (e?.message || e));
-                saveEvent.notifyFailure(e?.message || 'setSettings failed');
-              }
-            });
-          }
-        }
-        // Re-affirm validity after 1s (defensive)
-        setTimeout(()=> {
-          try {
-            if (microsoftTeams.pages?.config?.setValidityState) {
-              microsoftTeams.pages.config.setValidityState(true);
-            } else if (microsoftTeams.settings?.setValidityState) {
-              microsoftTeams.settings.setValidityState(true);
+          microsoftTeams.settings?.setValidityState?.(true);
+          microsoftTeams.settings?.registerOnSaveHandler?.((saveEvent) => {
+            try {
+              microsoftTeams.settings.setSettings({
+                entityId: "analystProMeeting",
+                contentUrl: "https://gksn-hub.github.io/AnalystPRO/index.html",
+                websiteUrl: "https://gksn-hub.github.io/AnalystPRO",
+                suggestedDisplayName: "AnalystPro"
+              });
+              log('Config set (v1).');
+              saveEvent.notifySuccess();
+            } catch(e){
+              log('setSettings failed (v1): ' + (e?.message || e));
+              saveEvent.notifyFailure(e?.message || 'setSettings failed');
             }
+          });
+        }
+        // Reaffirm validity in case of race
+        setTimeout(() => {
+          try {
+            microsoftTeams.pages?.config?.setValidityState?.(true);
+            microsoftTeams.settings?.setValidityState?.(true);
           } catch {}
         }, 1000);
 
@@ -116,12 +136,5 @@
 
     document.addEventListener('DOMContentLoaded', init);
   </script>
-</head>
-<body>
-  <div class="card">
-    <h1>AnalystPro</h1>
-    <p class="muted">Click <b>Save</b> to add AnalystPro to this meeting. You can open it from the side panel during the call.</p>
-    <div id="log" class="log"></div>
-  </div>
 </body>
 </html>
